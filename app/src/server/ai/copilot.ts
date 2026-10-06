@@ -5,6 +5,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma, type Ctx } from "../db";
 import * as T from "./tools";
+import { fold as norm } from "@/lib/text";
 
 export type CopilotAnswer = {
   text: string;
@@ -110,10 +111,6 @@ async function runTool(ctx: Ctx, name: string, input: unknown, conversationId?: 
 }
 
 // ───────────────────────── Modo local (determinístico) ─────────────────────────
-
-function norm(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-}
 
 function parseDays(q: string, fallback: number) {
   const m = q.match(/(\d+)\s*dias?/);

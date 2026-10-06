@@ -119,7 +119,8 @@ Cada llamada queda en `AIAction`.
 - **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 4**, con server actions y una capa de servicios de
   dominio separada (`src/server/services`), lista para extraerse a un backend NestJS como plantea el PRD.
 - **PostgreSQL + Prisma** con migraciones versionadas en `prisma/migrations`. La base local usa codificación
-  UTF-8 y collation ICU `es-CO`; las búsquedas de texto no distinguen mayúsculas (`ILIKE`). Los montos se guardan
+  UTF-8 y collation ICU `es-CO`; las búsquedas de texto ignoran tildes y mayúsculas
+  (`f_unaccent` + `ILIKE`, ver `src/server/search.ts`). Los montos se guardan
   como `double precision`, redondeados a 2 decimales por la capa de servicios.
 - Pendiente de fases posteriores del PRD: Redis/BullMQ, almacenamiento S3, envío real de OC por email/WhatsApp
   (hoy "Enviar al proveedor" cambia el estado y deja trazabilidad), facturación electrónica, portal de proveedor,

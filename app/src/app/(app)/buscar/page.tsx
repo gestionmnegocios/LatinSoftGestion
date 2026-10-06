@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/server/auth";
-import { prisma, ilike } from "@/server/db";
+import { prisma } from "@/server/db";
+import { searchIds } from "@/server/search";
 import { PageHeader, Card, Empty } from "@/components/ui";
 
 export const metadata = { title: "Buscar" };
@@ -15,15 +16,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     const exact = await prisma.product.findFirst({ where: { organizationId: O, OR: [{ barcode: q }, { sku: q.toUpperCase() }] } });
     if (exact) redirect(`/inventario/productos/${exact.id}`);
   }
-  const like = ilike(q);
+  const tables = ["Product", "Customer", "Supplier", "Quotation", "SalesOrder", "PurchaseOrder", "Invoice"] as const;
+  const [pIds, cIds, sIds, qIds, oIds, poIds, iIds] = q ? await Promise.all(tables.map((t) => searchIds(t, O, q))) : tables.map(() => [] as string[]);
   const [products, customers, suppliers, quotes, orders, pos, invoices] = q ? await Promise.all([
-    prisma.product.findMany({ where: { organizationId: O, OR: [{ name: like }, { sku: like }, { barcode: like }] }, take: 8 }),
-    prisma.customer.findMany({ where: { organizationId: O, OR: [{ name: like }, { documentNumber: like }] }, take: 6 }),
-    prisma.supplier.findMany({ where: { organizationId: O, OR: [{ legalName: like }, { tradeName: like }, { taxId: like }] }, take: 6 }),
-    prisma.quotation.findMany({ where: { organizationId: O, number: like }, take: 6 }),
-    prisma.salesOrder.findMany({ where: { organizationId: O, number: like }, take: 6 }),
-    prisma.purchaseOrder.findMany({ where: { organizationId: O, number: like }, take: 6 }),
-    prisma.invoice.findMany({ where: { organizationId: O, number: like }, take: 6 }),
+    prisma.product.findMany({ where: { id: { in: pIds } }, orderBy: { name: "asc" }, take: 8 }),
+    prisma.customer.findMany({ where: { id: { in: cIds } }, orderBy: { name: "asc" }, take: 6 }),
+    prisma.supplier.findMany({ where: { id: { in: sIds } }, orderBy: { legalName: "asc" }, take: 6 }),
+    prisma.quotation.findMany({ where: { id: { in: qIds } }, orderBy: { createdAt: "desc" }, take: 6 }),
+    prisma.salesOrder.findMany({ where: { id: { in: oIds } }, orderBy: { createdAt: "desc" }, take: 6 }),
+    prisma.purchaseOrder.findMany({ where: { id: { in: poIds } }, orderBy: { createdAt: "desc" }, take: 6 }),
+    prisma.invoice.findMany({ where: { id: { in: iIds } }, orderBy: { issueDate: "desc" }, take: 6 }),
   ]) : [[], [], [], [], [], [], []];
   const groups = [
     { title: "Productos", items: products.map((p) => ({ href: `/inventario/productos/${p.id}`, label: p.name, sub: `${p.sku} · ${p.barcode ?? ""}` })) },

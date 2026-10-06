@@ -2,10 +2,9 @@
 import { useMemo, useRef, useState } from "react";
 import { ScanBarcode } from "lucide-react";
 import { num } from "@/lib/format";
+import { fold as norm } from "@/lib/text";
 
 type P = { id: string; sku: string; barcode: string | null; name: string; available?: number };
-
-const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /** Buscador por nombre, SKU o código de barras. Un lector USB escribe el código + Enter y agrega el producto. */
 export function ProductPicker<T extends P>({ products, onPick, placeholder = "Código, nombre o código de barras", buttonLabel = "Agregar" }: {

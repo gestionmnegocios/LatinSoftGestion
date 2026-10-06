@@ -6,6 +6,7 @@ import { adjustInventory, getStockRows } from "../src/server/services/inventory"
 import { saveQuotation, convertQuotationToOrder, dispatchOrder, invoiceOrder, registerPayment } from "../src/server/services/sales";
 import { calculateRequirements, createRequirement, compareSuppliers, createOrdersFromComparison } from "../src/server/services/procurement";
 import { transitionPurchaseOrder, confirmGoodsReceipt } from "../src/server/services/purchasing";
+import { searchIds } from "../src/server/search";
 
 let step = 0;
 const ok = (msg: string) => console.log(`  ✔ ${String(++step).padStart(2, "0")} ${msg}`);
@@ -39,8 +40,13 @@ async function main() {
     assert.equal(b.onHand, 10);
     ok("Entrada inicial = 10 (vía movimiento de ajuste)");
 
-    const customer = await prisma.customer.create({ data: { organizationId: org.id, documentNumber: "123", name: "Cliente E2E", creditDays: 0 } });
+    const customer = await prisma.customer.create({ data: { organizationId: org.id, documentNumber: "123", name: "Clínica Médica E2E", creditDays: 0 } });
     ok("Crear cliente");
+
+    assert.deepEqual(await searchIds("Customer", org.id, "CLINICA medica"), [customer.id]);
+    assert.deepEqual(await searchIds("Customer", org.id, "100%_x"), []);
+    assert.deepEqual(await searchIds("Product", org.id, "escoba"), [product.id]);
+    ok("Búsqueda ignora tildes y mayúsculas, y escapa comodines");
 
     const quote = await saveQuotation(ctx, {
       customerId: customer.id, warehouseId: wh.id, validityDays: 15,

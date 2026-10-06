@@ -6,6 +6,7 @@ import { getStockRows } from "@/server/services/inventory";
 import { PageHeader, StatusBadge, Empty, Pagination } from "@/components/ui";
 import { ImportButton } from "./ImportButton";
 import { money, num, STOCK_STATUS } from "@/lib/format";
+import { matches } from "@/lib/text";
 
 export const metadata = { title: "Productos" };
 const PER = 15;
@@ -20,9 +21,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   ]);
   const barcodes = new Map((await prisma.product.findMany({ where: { organizationId: s.ctx.orgId }, select: { id: true, barcode: true } })).map((p) => [p.id, p.barcode ?? ""]));
   const catName = categories.find((c) => c.id === sp.cat)?.name;
-  const q = (sp.q ?? "").toLowerCase();
+  const q = (sp.q ?? "").trim();
   const filtered = rows.filter((r) =>
-    (!q || r.name.toLowerCase().includes(q) || r.sku.toLowerCase().includes(q) || barcodes.get(r.productId)?.includes(q)) &&
+    (!q || matches(r.name, q) || matches(r.sku, q) || matches(barcodes.get(r.productId), q)) &&
     (!catName || r.category === catName) &&
     (!sp.estado || r.status === sp.estado),
   );

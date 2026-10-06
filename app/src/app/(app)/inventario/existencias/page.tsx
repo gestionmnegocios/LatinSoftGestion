@@ -5,6 +5,7 @@ import { getStockRows } from "@/server/services/inventory";
 import { PageHeader, StatusBadge, KpiCard } from "@/components/ui";
 import { AdjustButton } from "@/components/AdjustForm";
 import { money, num, STOCK_STATUS } from "@/lib/format";
+import { matches } from "@/lib/text";
 import { Package, Lock, CheckCircle2, Truck } from "lucide-react";
 
 export const metadata = { title: "Existencias" };
@@ -12,7 +13,7 @@ export const metadata = { title: "Existencias" };
 export default async function StockPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const s = await requireSession("inventario");
   const { q } = await searchParams;
-  const rows = (await getStockRows(s.ctx.orgId, s.ctx.warehouseId)).filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase()) || r.sku.toLowerCase().includes(q.toLowerCase()));
+  const rows = (await getStockRows(s.ctx.orgId, s.ctx.warehouseId)).filter((r) => !q || matches(r.name, q) || matches(r.sku, q));
   const allBalances = await prisma.inventoryBalance.findMany({ where: { organizationId: s.ctx.orgId } });
   const byProduct = new Map<string, Record<string, { onHand: number; reserved: number }>>();
   for (const b of allBalances) {

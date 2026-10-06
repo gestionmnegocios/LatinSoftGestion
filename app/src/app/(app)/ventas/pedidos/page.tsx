@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireSession } from "@/server/auth";
-import { prisma, ilike } from "@/server/db";
+import { prisma } from "@/server/db";
+import { searchIds } from "@/server/search";
 import { PageHeader, StatusBadge, Tabs, Empty, Pagination, Badge } from "@/components/ui";
 import { money, date, ORDER_STATUS } from "@/lib/format";
 
@@ -21,7 +22,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const where = {
     organizationId: ctx.orgId,
     ...(filters[estado] ? { status: { in: filters[estado] } } : {}),
-    ...(sp.q ? { OR: [{ number: ilike(sp.q) }, { customer: { name: ilike(sp.q) } }] } : {}),
+    ...(sp.q ? { OR: [{ id: { in: await searchIds("SalesOrder", ctx.orgId, sp.q) } }, { customerId: { in: await searchIds("Customer", ctx.orgId, sp.q) } }] } : {}),
   };
   const [rows, total, counts] = await Promise.all([
     prisma.salesOrder.findMany({ where, include: { customer: true, items: true, quotation: { select: { number: true } }, invoice: { select: { number: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * PER, take: PER }),

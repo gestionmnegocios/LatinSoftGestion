@@ -5,13 +5,10 @@ import { prisma, round2, type Ctx } from "../db";
 import { getStockRows } from "../services/inventory";
 import { calculateRequirements, createRequirement } from "../services/procurement";
 import { saveQuotation } from "../services/sales";
+import { fold as norm } from "@/lib/text";
 
 const DAY = 86400000;
 const money = (n: number) => "$" + Math.round(n).toLocaleString("es-CO");
-
-function norm(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
 
 export type ToolResult = { data: unknown; summary: string; link?: { label: string; href: string } };
 

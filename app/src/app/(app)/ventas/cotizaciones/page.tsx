@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireSession } from "@/server/auth";
-import { prisma, ilike } from "@/server/db";
+import { prisma } from "@/server/db";
+import { searchIds } from "@/server/search";
 import { PageHeader, StatusBadge, Tabs, Empty, Pagination } from "@/components/ui";
 import { money, date, QUOTE_STATUS } from "@/lib/format";
 
@@ -17,7 +18,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const where = {
     organizationId: ctx.orgId,
     ...(statusFilter[estado] ? { status: { in: statusFilter[estado] } } : {}),
-    ...(sp.q ? { OR: [{ number: ilike(sp.q) }, { customer: { name: ilike(sp.q) } }] } : {}),
+    ...(sp.q ? { OR: [{ id: { in: await searchIds("Quotation", ctx.orgId, sp.q) } }, { customerId: { in: await searchIds("Customer", ctx.orgId, sp.q) } }] } : {}),
   };
   const [rows, total, counts] = await Promise.all([
     prisma.quotation.findMany({ where, include: { customer: true, _count: { select: { items: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * PER, take: PER }),
