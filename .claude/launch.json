@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "latinsoft", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "app", "run", "start"], "port": 3000 },
+    { "name": "latinsoft-dev", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "app", "run", "dev"], "port": 3000 }
+  ]
+}

@@ -1,0 +1,647 @@
+// LatinSoftGestion — modelo de datos MVP
+// SQLite para desarrollo local. Para producción cambie provider a "postgresql"
+// y DATABASE_URL; el modelo es compatible (los enums se manejan como String).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Tenancy ─────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  taxId     String?
+  country   String   @default("CO")
+  currency  String   @default("COP")
+  timezone  String   @default("America/Bogota")
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies  Company[]
+  warehouses Warehouse[]
+  users      User[]
+  roles      Role[]
+}
+
+model Company {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  legalName      String
+  tradeName      String?
+  taxId          String?
+  address        String?
+  phone          String?
+  email          String?
+  status         String       @default("ACTIVE")
+  branches       Branch[]
+}
+
+model Branch {
+  id             String      @id @default(cuid())
+  organizationId String
+  companyId      String
+  company        Company     @relation(fields: [companyId], references: [id])
+  name           String
+  code           String
+  address        String?
+  city           String?
+  status         String      @default("ACTIVE")
+  warehouses     Warehouse[]
+}
+
+model Warehouse {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  branchId       String?
+  branch         Branch?      @relation(fields: [branchId], references: [id])
+  code           String
+  name           String
+  type           String       @default("MAIN") // MAIN | SALES | TRANSIT | RETURNS | DAMAGED
+  status         String       @default("ACTIVE")
+
+  balances  InventoryBalance[]
+  movements InventoryMovement[]
+
+  @@unique([organizationId, code])
+}
+
+// ───────────────────────── Usuarios / RBAC ─────────────────────────
+
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  email          String       @unique
+  passwordHash   String
+  status         String       @default("ACTIVE")
+  lastLoginAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  roles    UserRole[]
+  sessions Session[]
+}
+
+model Role {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  key            String
+  name           String
+  permissions    RolePermission[]
+  users          UserRole[]
+
+  @@unique([organizationId, key])
+}
+
+model RolePermission {
+  id         String @id @default(cuid())
+  roleId     String
+  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission String // ej: inventory.adjust
+
+  @@unique([roleId, permission])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ───────────────────────── Catálogo ─────────────────────────
+
+model Category {
+  id             String     @id @default(cuid())
+  organizationId String
+  parentId       String?
+  parent         Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children       Category[] @relation("CategoryTree")
+  name           String
+  status         String     @default("ACTIVE")
+  products       Product[]
+}
+
+model Brand {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  products       Product[]
+}
+
+model PriceList {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  isDefault      Boolean        @default(false)
+  prices         ProductPrice[]
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  organizationId  String
+  sku             String
+  barcode         String?
+  name            String
+  description     String?
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  brandId         String?
+  brand           Brand?    @relation(fields: [brandId], references: [id])
+  unit            String    @default("UND")
+  taxRate         Float     @default(19)
+  averageCost     Float     @default(0)
+  lastCost        Float     @default(0)
+  salePrice       Float     @default(0)
+  minimumStock    Float     @default(0)
+  maximumStock    Float     @default(0)
+  safetyStock     Float     @default(0)
+  reorderPoint    Float     @default(0)
+  location        String?
+  trackLot        Boolean   @default(false)
+  trackExpiration Boolean   @default(false)
+  status          String    @default("ACTIVE")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  prices           ProductPrice[]
+  balances         InventoryBalance[]
+  movements        InventoryMovement[]
+  supplierProducts SupplierProduct[]
+  quotationItems   QuotationItem[]
+  salesOrderItems  SalesOrderItem[]
+  requirementItems PurchaseRequirementItem[]
+  purchaseItems    PurchaseOrderItem[]
+  receiptItems     GoodsReceiptItem[]
+
+  @@unique([organizationId, sku])
+}
+
+model ProductPrice {
+  id          String    @id @default(cuid())
+  priceListId String
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price       Float
+
+  @@unique([priceListId, productId])
+}
+
+// ───────────────────────── Inventario ─────────────────────────
+
+model InventoryBalance {
+  id             String    @id @default(cuid())
+  organizationId String
+  warehouseId    String
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id])
+  productId      String
+  product        Product   @relation(fields: [productId], references: [id])
+  onHand         Float     @default(0) // existencia física
+  reserved       Float     @default(0) // comprometido
+  incoming       Float     @default(0) // OC confirmadas pendientes
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([warehouseId, productId])
+}
+
+model InventoryMovement {
+  id                String    @id @default(cuid())
+  organizationId    String
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id])
+  warehouseId       String
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id])
+  movementType      String // PURCHASE_RECEIPT | SALE | TRANSFER_IN | TRANSFER_OUT | POSITIVE_ADJUSTMENT | NEGATIVE_ADJUSTMENT | CUSTOMER_RETURN | SUPPLIER_RETURN | RESERVATION | RESERVATION_RELEASE
+  quantity          Float
+  previousQuantity  Float
+  resultingQuantity Float
+  unitCost          Float     @default(0)
+  totalCost         Float     @default(0)
+  referenceType     String?
+  referenceId       String?
+  referenceNumber   String?
+  lotNumber         String?
+  expirationDate    DateTime?
+  userId            String?
+  userName          String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+
+  @@index([organizationId, productId, createdAt])
+}
+
+model Transfer {
+  id              String         @id @default(cuid())
+  organizationId  String
+  number          String
+  fromWarehouseId String
+  toWarehouseId   String
+  status          String         @default("CONFIRMED")
+  notes           String?
+  createdById     String?
+  createdAt       DateTime       @default(now())
+  items           TransferItem[]
+}
+
+model TransferItem {
+  id         String   @id @default(cuid())
+  transferId String
+  transfer   Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId  String
+  quantity   Float
+}
+
+// ───────────────────────── Ventas ─────────────────────────
+
+model Customer {
+  id             String       @id @default(cuid())
+  organizationId String
+  documentType   String       @default("NIT")
+  documentNumber String
+  name           String
+  tradeName      String?
+  contactName    String?
+  email          String?
+  phone          String?
+  address        String?
+  city           String?
+  priceListId    String?
+  creditLimit    Float        @default(0)
+  creditDays     Int          @default(0)
+  status         String       @default("ACTIVE")
+  createdAt      DateTime     @default(now())
+  quotations     Quotation[]
+  salesOrders    SalesOrder[]
+  invoices       Invoice[]
+}
+
+model Quotation {
+  id             String          @id @default(cuid())
+  organizationId String
+  number         String
+  customerId     String
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  warehouseId    String
+  priceListId    String?
+  salespersonId  String?
+  salespersonName String?
+  issueDate      DateTime        @default(now())
+  expirationDate DateTime
+  subtotal       Float           @default(0)
+  discount       Float           @default(0)
+  tax            Float           @default(0)
+  total          Float           @default(0)
+  status         String          @default("DRAFT") // DRAFT | SENT | ACCEPTED | REJECTED | EXPIRED | CONVERTED
+  notes          String?
+  createdAt      DateTime        @default(now())
+  items          QuotationItem[]
+  salesOrder     SalesOrder?
+
+  @@unique([organizationId, number])
+}
+
+model QuotationItem {
+  id                     String    @id @default(cuid())
+  quotationId            String
+  quotation              Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId              String
+  product                Product   @relation(fields: [productId], references: [id])
+  quantity               Float
+  unitPrice              Float
+  discountPct            Float     @default(0)
+  taxRate                Float     @default(19)
+  subtotal               Float
+  tax                    Float
+  total                  Float
+  availableStockSnapshot Float     @default(0)
+}
+
+model SalesOrder {
+  id             String           @id @default(cuid())
+  organizationId String
+  number         String
+  quotationId    String?          @unique
+  quotation      Quotation?       @relation(fields: [quotationId], references: [id])
+  customerId     String
+  customer       Customer         @relation(fields: [customerId], references: [id])
+  warehouseId    String
+  status         String           @default("DRAFT") // DRAFT | CONFIRMED | PREPARING | PARTIAL | READY | DISPATCHED | DELIVERED | CANCELLED
+  subtotal       Float            @default(0)
+  discount       Float            @default(0)
+  tax            Float            @default(0)
+  total          Float            @default(0)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  confirmedAt    DateTime?
+  dispatchedAt   DateTime?
+  items          SalesOrderItem[]
+  invoice        Invoice?
+
+  @@unique([organizationId, number])
+}
+
+model SalesOrderItem {
+  id                String     @id @default(cuid())
+  salesOrderId      String
+  salesOrder        SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product    @relation(fields: [productId], references: [id])
+  quantity          Float
+  reservedQuantity  Float      @default(0)
+  fulfilledQuantity Float      @default(0)
+  unitPrice         Float
+  discountPct       Float      @default(0)
+  taxRate           Float      @default(19)
+  unitCost          Float      @default(0)
+  subtotal          Float      @default(0)
+  tax               Float      @default(0)
+  total             Float      @default(0)
+}
+
+// ───────────────────────── Compras ─────────────────────────
+
+model Supplier {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  taxId              String
+  legalName          String
+  tradeName          String?
+  contactName        String?
+  email              String?
+  phone              String?
+  address            String?
+  city               String?
+  paymentTerms       String            @default("Contado")
+  creditDays         Int               @default(0)
+  averageLeadTime    Int               @default(3)
+  shippingCost       Float             @default(0)
+  fulfillmentRating  Float             @default(4)
+  status             String            @default("ACTIVE")
+  createdAt          DateTime          @default(now())
+  products           SupplierProduct[]
+  purchaseOrders     PurchaseOrder[]
+}
+
+model SupplierProduct {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  supplierId           String
+  supplier             Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId            String
+  product              Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplierSku          String?
+  price                Float
+  discountPct          Float    @default(0)
+  minimumOrderQuantity Float    @default(1)
+  availableQuantity    Float    @default(9999)
+  leadTimeDays         Int      @default(3)
+  isPreferred          Boolean  @default(false)
+  status               String   @default("ACTIVE")
+  updatedAt            DateTime @updatedAt
+
+  @@unique([supplierId, productId])
+}
+
+model PurchaseRequirement {
+  id             String                    @id @default(cuid())
+  organizationId String
+  number         String
+  warehouseId    String
+  status         String                    @default("OPEN") // OPEN | ORDERED | CANCELLED
+  createdById    String?
+  createdAt      DateTime                  @default(now())
+  items          PurchaseRequirementItem[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseRequirementItem {
+  id                    String              @id @default(cuid())
+  purchaseRequirementId String
+  requirement           PurchaseRequirement @relation(fields: [purchaseRequirementId], references: [id], onDelete: Cascade)
+  productId             String
+  product               Product             @relation(fields: [productId], references: [id])
+  currentStock          Float
+  reservedStock         Float
+  incomingStock         Float
+  suggestedQuantity     Float
+  approvedQuantity      Float
+  reason                String // LOW_STOCK | OUT_OF_STOCK | SALES_ORDER | FORECAST | MANUAL
+}
+
+model PurchaseOrder {
+  id             String               @id @default(cuid())
+  organizationId String
+  number         String
+  supplierId     String
+  supplier       Supplier             @relation(fields: [supplierId], references: [id])
+  warehouseId    String
+  requirementId  String?
+  requirement    PurchaseRequirement? @relation(fields: [requirementId], references: [id])
+  status         String               @default("DRAFT") // DRAFT | SENT | CONFIRMED | IN_TRANSIT | PARTIALLY_RECEIVED | RECEIVED | CLOSED | CANCELLED
+  orderDate      DateTime             @default(now())
+  expectedDate   DateTime?
+  subtotal       Float                @default(0)
+  discount       Float                @default(0)
+  shipping       Float                @default(0)
+  tax            Float                @default(0)
+  total          Float                @default(0)
+  paymentTerms   String?
+  notes          String?
+  createdById    String?
+  approvedById   String?
+  createdAt      DateTime             @default(now())
+  items          PurchaseOrderItem[]
+  receipts       GoodsReceipt[]
+
+  @@unique([organizationId, number])
+}
+
+model PurchaseOrderItem {
+  id               String        @id @default(cuid())
+  purchaseOrderId  String
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id])
+  quantity         Float
+  receivedQuantity Float         @default(0)
+  unitCost         Float
+  discountPct      Float         @default(0)
+  taxRate          Float         @default(19)
+  total            Float         @default(0)
+}
+
+model GoodsReceipt {
+  id              String             @id @default(cuid())
+  organizationId  String
+  number          String
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  supplierId      String
+  warehouseId     String
+  receivedAt      DateTime           @default(now())
+  receivedById    String?
+  receivedByName  String?
+  status          String             @default("CONFIRMED")
+  notes           String?
+  items           GoodsReceiptItem[]
+}
+
+model GoodsReceiptItem {
+  id                  String       @id @default(cuid())
+  goodsReceiptId      String
+  goodsReceipt        GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId String
+  productId           String
+  product             Product      @relation(fields: [productId], references: [id])
+  orderedQuantity     Float
+  receivedQuantity    Float
+  acceptedQuantity    Float
+  rejectedQuantity    Float        @default(0)
+  unitCost            Float
+  lotNumber           String?
+  expirationDate      DateTime?
+}
+
+// ───────────────────────── Finanzas ─────────────────────────
+
+model Invoice {
+  id             String     @id @default(cuid())
+  organizationId String
+  number         String
+  salesOrderId   String     @unique
+  salesOrder     SalesOrder @relation(fields: [salesOrderId], references: [id])
+  customerId     String
+  customer       Customer   @relation(fields: [customerId], references: [id])
+  issueDate      DateTime   @default(now())
+  dueDate        DateTime
+  subtotal       Float
+  tax            Float
+  total          Float
+  paidAmount     Float      @default(0)
+  status         String     @default("ISSUED") // ISSUED | PARTIAL | PAID | CANCELLED
+  payments       Payment[]
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  organizationId String
+  invoiceId      String
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount         Float
+  method         String   @default("Efectivo")
+  createdAt      DateTime @default(now())
+  userId         String?
+}
+
+model AccountPayable {
+  id              String   @id @default(cuid())
+  organizationId  String
+  supplierId      String
+  purchaseOrderId String
+  goodsReceiptId  String
+  documentNumber  String
+  amount          Float
+  paidAmount      Float    @default(0)
+  dueDate         DateTime
+  status          String   @default("PENDING") // PENDING | PAID
+  createdAt       DateTime @default(now())
+}
+
+model CashMovement {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String // IN | OUT
+  amount         Float
+  concept        String
+  referenceType  String?
+  referenceId    String?
+  userId         String?
+  createdAt      DateTime @default(now())
+}
+
+model CashClosing {
+  id             String   @id @default(cuid())
+  organizationId String
+  openingAmount  Float    @default(0)
+  totalIn        Float
+  totalOut       Float
+  expected       Float
+  counted        Float
+  difference     Float
+  userId         String?
+  createdAt      DateTime @default(now())
+}
+
+// ───────────────────────── Transversal ─────────────────────────
+
+model Counter {
+  id             String @id @default(cuid())
+  organizationId String
+  key            String
+  value          Int    @default(0)
+
+  @@unique([organizationId, key])
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String
+  title          String
+  message        String
+  link           String?
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  userName       String?
+  action         String
+  entity         String
+  entityId       String?
+  oldValue       String?
+  newValue       String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+model AIAction {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  userId               String?
+  conversationId       String?
+  tool                 String
+  input                String?
+  output               String?
+  requiresConfirmation Boolean   @default(false)
+  confirmedById        String?
+  confirmedAt          DateTime?
+  createdAt            DateTime  @default(now())
+}

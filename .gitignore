@@ -1,0 +1,7 @@
+.claude/settings.local.json
+Thumbs.db
+.DS_Store
+
+# Documentos internos (no publicar)
+*.pdf
+/LatinSoft Gestion Comercial.png

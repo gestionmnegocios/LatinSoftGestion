@@ -1,0 +1,117 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+/* Design tokens — PRD §23/§24 */
+@theme {
+  --font-sans: "Inter Variable", Inter, "Segoe UI", system-ui, sans-serif;
+
+  --color-navy-900: #082a52;
+  --color-navy-800: #0b3768;
+  --color-navy-700: #124a86;
+  --color-brand-600: #0866e5;
+  --color-brand-500: #1683f8;
+  --color-brand-100: #eaf3ff;
+  --color-brand-50: #f4f9ff;
+  --color-accent-600: #16a05d;
+
+  --color-success: #16a05d;
+  --color-success-bg: #e8f8ef;
+  --color-warning: #f5a623;
+  --color-warning-ink: #b26a00;
+  --color-warning-bg: #fff5dd;
+  --color-danger: #e5484d;
+  --color-danger-bg: #fdebec;
+  --color-info: #1683f8;
+  --color-ai: #6d5dfb;
+  --color-ai-bg: #f0eeff;
+
+  --color-ink-950: #101828;
+  --color-ink-700: #344054;
+  --color-ink-500: #667085;
+  --color-line-300: #d0d5dd;
+  --color-line-200: #eaecf0;
+  --color-surface-100: #f2f4f7;
+  --color-surface-50: #f8fafc;
+}
+
+html,
+body {
+  background: var(--color-surface-50);
+  color: var(--color-ink-950);
+  font-size: 14px;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)];
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-500;
+  }
+  .btn-success {
+    @apply btn bg-accent-600 text-white hover:brightness-110;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:brightness-110;
+  }
+  .btn-outline {
+    @apply btn border border-brand-600 bg-white text-brand-600 hover:bg-brand-50;
+  }
+  .btn-ghost {
+    @apply btn border border-line-300 bg-white text-ink-700 hover:bg-surface-100;
+  }
+  .btn-ai {
+    @apply btn bg-ai text-white hover:brightness-110;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line-300 bg-white px-3 py-2 text-[13px] text-ink-950 outline-none placeholder:text-ink-500 focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-ink-700;
+  }
+  .table {
+    @apply w-full text-[13px];
+  }
+  .table th {
+    @apply border-b border-line-200 bg-surface-50 px-3 py-2.5 text-left text-xs font-semibold text-ink-700 whitespace-nowrap;
+  }
+  .table td {
+    @apply border-b border-line-200 px-3 py-2.5 align-middle;
+  }
+  .table tbody tr:hover {
+    @apply bg-surface-50;
+  }
+  .h1 {
+    @apply text-[24px] font-bold tracking-tight text-ink-950;
+  }
+  .h2 {
+    @apply text-[18px] font-bold text-ink-950;
+  }
+  .h3 {
+    @apply text-[15px] font-semibold text-ink-950;
+  }
+  .muted {
+    @apply text-ink-500;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+}
+
+aside nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
