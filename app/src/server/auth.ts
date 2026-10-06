@@ -14,7 +14,7 @@ export async function createSession(userId: string) {
   const token = randomBytes(32).toString("hex");
   await prisma.session.create({ data: { token, userId, expiresAt: new Date(Date.now() + 7 * 86400000) } });
   await prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
-  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 7 * 86400 });
+  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production" && !process.env.ALLOW_INSECURE_COOKIES, sameSite: "lax", path: "/", maxAge: 7 * 86400 });
 }
 
 export async function destroySession() {

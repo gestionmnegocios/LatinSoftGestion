@@ -53,6 +53,10 @@ cd app
 npm run test:e2e
 ```
 
+## Despliegue
+
+Producción en Vercel con PostgreSQL en Supabase: ver [Despliegue en Vercel + Supabase](app/README.md#despliegue-en-vercel--supabase).
+
 ## Documentación
 
 Instalación detallada, cuentas por rol, reglas de negocio, Copiloto IA y arquitectura: [app/README.md](app/README.md).

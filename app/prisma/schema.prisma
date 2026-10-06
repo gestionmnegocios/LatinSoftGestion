@@ -7,8 +7,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // En Vercel/Supabase: DATABASE_URL = pooler (puerto 6543), DIRECT_URL = conexión directa para migraciones.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ───────────────────────── Tenancy ─────────────────────────

@@ -42,7 +42,7 @@ Para desarrollo con recarga en caliente: `npm run dev` (consume bastante más me
 | `npm run db:migrate -- --name <cambio>` | Crea una migración nueva tras editar `prisma/schema.prisma` |
 | `npm run db:seed` | Reemplaza todo con los datos demo |
 | `npm run db:reset` | Borra la base, reaplica migraciones y carga el demo |
-| `npm run db:import-sqlite -- <archivo.db>` | Copia los datos de una base SQLite de la versión anterior |
+| `npm run db:import -- --from <origen>` | Copia todos los datos desde un archivo SQLite anterior o desde otra base PostgreSQL hacia `DATABASE_URL` |
 
 ### Cuentas demo (contraseña `Demo2026!`)
 
@@ -53,6 +53,43 @@ Para desarrollo con recarga en caliente: `npm run dev` (consume bastante más me
 | bodega@latinsoft.co | Encargado de bodega |
 | compras@latinsoft.co | Comprador |
 | caja@latinsoft.co | Caja |
+
+## Despliegue en Vercel + Supabase
+
+La app se despliega en **Vercel** desde GitHub y usa **Supabase** como PostgreSQL. Cada `git push` a `main`
+publica una versión nueva; el build (`npm run vercel-build`) aplica las migraciones pendientes antes de compilar.
+
+**1. Supabase.** Cree un proyecto en [supabase.com](https://supabase.com) (región cercana, p. ej. São Paulo
+`sa-east-1`) y guarde la contraseña de la base. En **Connect → ORM / Prisma** copie las dos cadenas:
+
+| Variable | Cadena de Supabase |
+|---|---|
+| `DATABASE_URL` | *Transaction pooler* (puerto **6543**), agregando `?pgbouncer=true&connection_limit=1` |
+| `DIRECT_URL` | *Session pooler* o conexión directa (puerto **5432**) |
+
+**2. Vercel.** En [vercel.com/new](https://vercel.com/new) importe el repositorio `LatinSoftGestion` de GitHub
+(autorice la app de Vercel en GitHub si lo pide) y configure:
+
+- **Root Directory:** `app` (Framework: Next.js; el resto por defecto)
+- **Environment Variables:** `DATABASE_URL`, `DIRECT_URL` y, opcionalmente, `ANTHROPIC_API_KEY`
+- **Settings → Functions → Region:** la misma zona de Supabase (p. ej. `gru1` São Paulo)
+
+**3. Datos.** Para subir los datos de su base local (PostgreSQL de `npm run db:start` corriendo), en PowerShell:
+
+```powershell
+cd app
+$env:DATABASE_URL = "<cadena DIRECT_URL de Supabase, puerto 5432>"
+$env:DIRECT_URL   = $env:DATABASE_URL
+npm run db:import -- --from "postgresql://latinsoft:latinsoft_dev@localhost:5432/latinsoft"
+Remove-Item Env:DATABASE_URL, Env:DIRECT_URL
+```
+
+El script aplica las migraciones en Supabase, copia todas las tablas y verifica los conteos. Si la base de
+Supabase ya tiene datos se detiene (use `--force` solo si quiere reemplazarlos).
+
+> **Importante:** el repositorio es público y las cuentas demo usan la contraseña conocida `Demo2026!`.
+> Antes de compartir la URL de producción, cree usuarios propios en *Configuración → Usuarios* y desactive
+> las cuentas demo.
 
 ## Pruebas
 
