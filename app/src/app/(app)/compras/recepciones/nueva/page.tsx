@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/server/auth";
-import { prisma } from "@/server/db";
+import { prisma, ilike } from "@/server/db";
 import { PageHeader, StatusBadge, Card } from "@/components/ui";
 import { ReceiptForm } from "./ReceiptForm";
 import { date, PO_STATUS } from "@/lib/format";
@@ -13,7 +13,7 @@ export default async function NewReceipt({ searchParams }: { searchParams: Promi
   const { ctx } = await requireSession("compras");
   const sp = await searchParams;
   if (!sp.oc && sp.q) {
-    const found = await prisma.purchaseOrder.findFirst({ where: { organizationId: ctx.orgId, number: { contains: sp.q.trim().toUpperCase() } } });
+    const found = await prisma.purchaseOrder.findFirst({ where: { organizationId: ctx.orgId, number: ilike(sp.q.trim().toUpperCase()) } });
     if (found) redirect(`/compras/recepciones/nueva?oc=${found.id}`);
   }
   const po = sp.oc ? await prisma.purchaseOrder.findFirst({ where: { id: sp.oc, organizationId: ctx.orgId }, include: { supplier: true, items: { include: { product: true } } } }) : null;

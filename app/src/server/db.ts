@@ -32,3 +32,8 @@ export function requirePermission(ctx: Ctx, permission: string) {
 export function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
+
+/** Búsqueda parcial sin distinguir mayúsculas (PostgreSQL ILIKE). */
+export function ilike(value: string) {
+  return { contains: value, mode: "insensitive" as const };
+}

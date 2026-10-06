@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/server/auth";
-import { prisma } from "@/server/db";
+import { prisma, ilike } from "@/server/db";
 import { PageHeader, Card, Empty } from "@/components/ui";
 
 export const metadata = { title: "Buscar" };
@@ -15,7 +15,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     const exact = await prisma.product.findFirst({ where: { organizationId: O, OR: [{ barcode: q }, { sku: q.toUpperCase() }] } });
     if (exact) redirect(`/inventario/productos/${exact.id}`);
   }
-  const like = { contains: q };
+  const like = ilike(q);
   const [products, customers, suppliers, quotes, orders, pos, invoices] = q ? await Promise.all([
     prisma.product.findMany({ where: { organizationId: O, OR: [{ name: like }, { sku: like }, { barcode: like }] }, take: 8 }),
     prisma.customer.findMany({ where: { organizationId: O, OR: [{ name: like }, { documentNumber: like }] }, take: 6 }),

@@ -7,18 +7,42 @@ Plataforma web de gestión comercial, inventario y abastecimiento inteligente, c
 
 ## Arranque rápido
 
-Requisitos: Node.js 20+ (probado con Node 24).
+Requisitos: Node.js 20+ (probado con Node 24) y PostgreSQL 14+.
+
+**1. Base de datos.** Si no tiene un servidor PostgreSQL, levante uno local (sin instalación ni permisos de
+administrador; los datos quedan en `app/.pgdata`). Déjelo corriendo en su propia terminal:
+
+```bash
+cd app
+npm install
+npm run db:start
+```
+
+Si ya tiene PostgreSQL (local o en la nube), ajuste `DATABASE_URL` en `.env` y omita `db:start`.
+
+**2. Aplicación**, en otra terminal:
 
 ```bash
 cd app
 cp .env.example .env
-npm install
-npm run db:reset      # crea la base SQLite y carga datos demo (90 días de historia)
+npm run db:deploy     # aplica las migraciones (prisma/migrations)
+npm run db:seed       # carga datos demo (90 días de historia); BORRA los datos existentes
 npm run build
 npm start             # http://localhost:3000
 ```
 
 Para desarrollo con recarga en caliente: `npm run dev` (consume bastante más memoria que `npm start`).
+
+### Scripts de base de datos
+
+| Script | Uso |
+|---|---|
+| `npm run db:start` | Servidor PostgreSQL local de desarrollo en `localhost:5432` |
+| `npm run db:deploy` | Aplica migraciones pendientes (también en producción) |
+| `npm run db:migrate -- --name <cambio>` | Crea una migración nueva tras editar `prisma/schema.prisma` |
+| `npm run db:seed` | Reemplaza todo con los datos demo |
+| `npm run db:reset` | Borra la base, reaplica migraciones y carga el demo |
+| `npm run db:import-sqlite -- <archivo.db>` | Copia los datos de una base SQLite de la versión anterior |
 
 ### Cuentas demo (contraseña `Demo2026!`)
 
@@ -94,8 +118,9 @@ Cada llamada queda en `AIAction`.
 
 - **Next.js 15 (App Router) + React 19 + TypeScript + Tailwind 4**, con server actions y una capa de servicios de
   dominio separada (`src/server/services`), lista para extraerse a un backend NestJS como plantea el PRD.
-- **Prisma** como ORM. En local usa **SQLite** para no requerir servidor de base de datos; para producción cambie
-  `provider = "postgresql"` en `prisma/schema.prisma` y `DATABASE_URL` (el modelo es compatible).
+- **PostgreSQL + Prisma** con migraciones versionadas en `prisma/migrations`. La base local usa codificación
+  UTF-8 y collation ICU `es-CO`; las búsquedas de texto no distinguen mayúsculas (`ILIKE`). Los montos se guardan
+  como `double precision`, redondeados a 2 decimales por la capa de servicios.
 - Pendiente de fases posteriores del PRD: Redis/BullMQ, almacenamiento S3, envío real de OC por email/WhatsApp
   (hoy "Enviar al proveedor" cambia el estado y deja trazabilidad), facturación electrónica, portal de proveedor,
   multiempresa con varias compañías por organización en la UI, importación Excel (hoy CSV).

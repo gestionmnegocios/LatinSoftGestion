@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireSession } from "@/server/auth";
-import { prisma } from "@/server/db";
+import { prisma, ilike } from "@/server/db";
 import { PageHeader, StatusBadge, Tabs, Empty, Pagination, KpiCard } from "@/components/ui";
 import { money, date, INVOICE_STATUS } from "@/lib/format";
 import { Receipt, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -18,7 +18,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const where = {
     ...base,
     ...(estado === "pendientes" ? { status: { in: ["ISSUED", "PARTIAL"] } } : estado === "vencidas" ? { status: { in: ["ISSUED", "PARTIAL"] }, dueDate: { lt: now } } : estado === "pagadas" ? { status: "PAID" } : {}),
-    ...(sp.q ? { OR: [{ number: { contains: sp.q } }, { customer: { name: { contains: sp.q } } }] } : {}),
+    ...(sp.q ? { OR: [{ number: ilike(sp.q) }, { customer: { name: ilike(sp.q) } }] } : {}),
   };
   const [rows, total, open] = await Promise.all([
     prisma.invoice.findMany({ where, include: { customer: true, salesOrder: { select: { number: true } } }, orderBy: { issueDate: "desc" }, skip: (page - 1) * PER, take: PER }),

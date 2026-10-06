@@ -1,13 +1,13 @@
-// LatinSoftGestion — modelo de datos MVP
-// SQLite para desarrollo local. Para producción cambie provider a "postgresql"
-// y DATABASE_URL; el modelo es compatible (los enums se manejan como String).
+// LatinSoftGestion — modelo de datos MVP (PostgreSQL)
+// Los estados se manejan como String para poder ampliarlos sin migraciones de enum.
+// Cambios de esquema: `npm run db:migrate -- --name <cambio>` (genera prisma/migrations).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

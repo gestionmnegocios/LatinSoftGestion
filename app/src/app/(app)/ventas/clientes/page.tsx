@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireSession } from "@/server/auth";
-import { prisma } from "@/server/db";
+import { prisma, ilike } from "@/server/db";
 import { PageHeader, Empty, Badge } from "@/components/ui";
 import { money } from "@/lib/format";
 
@@ -11,7 +11,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const { ctx } = await requireSession("ventas");
   const { q } = await searchParams;
   const customers = await prisma.customer.findMany({
-    where: { organizationId: ctx.orgId, ...(q ? { OR: [{ name: { contains: q } }, { documentNumber: { contains: q } }, { contactName: { contains: q } }] } : {}) },
+    where: { organizationId: ctx.orgId, ...(q ? { OR: [{ name: ilike(q) }, { documentNumber: ilike(q) }, { contactName: ilike(q) }] } : {}) },
     include: { invoices: { where: { status: { in: ["ISSUED", "PARTIAL"] } }, select: { total: true, paidAmount: true, dueDate: true } }, _count: { select: { salesOrders: true } } },
     orderBy: { name: "asc" },
   });

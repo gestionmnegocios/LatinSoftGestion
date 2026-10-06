@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus, Star } from "lucide-react";
 import { requireSession } from "@/server/auth";
-import { prisma } from "@/server/db";
+import { prisma, ilike } from "@/server/db";
 import { PageHeader, Empty } from "@/components/ui";
 import { money } from "@/lib/format";
 
@@ -11,7 +11,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Pr
   const { ctx } = await requireSession("proveedores");
   const { q } = await searchParams;
   const suppliers = await prisma.supplier.findMany({
-    where: { organizationId: ctx.orgId, ...(q ? { OR: [{ legalName: { contains: q } }, { tradeName: { contains: q } }, { taxId: { contains: q } }] } : {}) },
+    where: { organizationId: ctx.orgId, ...(q ? { OR: [{ legalName: ilike(q) }, { tradeName: ilike(q) }, { taxId: ilike(q) }] } : {}) },
     include: { _count: { select: { products: { where: { status: "ACTIVE" } }, purchaseOrders: true } } },
     orderBy: { legalName: "asc" },
   });

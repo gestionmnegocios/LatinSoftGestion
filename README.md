@@ -20,17 +20,26 @@ LatinSoftGestion conecta en un solo flujo lo que normalmente se maneja por separ
 
 ## Tecnología
 
-Next.js 15 · React 19 · TypeScript · Tailwind CSS 4 · Prisma (SQLite en local, compatible con PostgreSQL) · Recharts · Claude API (opcional)
+Next.js 15 · React 19 · TypeScript · Tailwind CSS 4 · PostgreSQL · Prisma · Recharts · Claude API (opcional)
 
 ## Inicio rápido
 
-Requiere Node.js 20 o superior.
+Requiere Node.js 20 o superior. Si no tiene PostgreSQL, `npm run db:start` levanta uno local sin instalación
+(déjelo corriendo en otra terminal):
 
 ```bash
 cd app
 cp .env.example .env
 npm install
-npm run db:reset
+npm run db:start
+```
+
+En otra terminal:
+
+```bash
+cd app
+npm run db:deploy
+npm run db:seed
 npm run build
 npm start
 ```
