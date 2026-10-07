@@ -154,5 +154,12 @@ async function main() {
 }
 
 main()
-  .catch((e) => { console.error("❌", e instanceof Error ? e.message : e); process.exitCode = 1; })
+  .catch((e) => {
+    const refused = e?.code === "ECONNREFUSED" || (e instanceof AggregateError && e.errors.some((x: { code?: string }) => x.code === "ECONNREFUSED"));
+    const msg = refused
+      ? `No se pudo conectar a la base de origen (${hostOf(from ?? "")}). ¿Está encendido el PostgreSQL local? Ejecute "npm run db:start" en otra ventana.`
+      : e instanceof Error ? e.message || e.name : String(e);
+    console.error("❌", msg);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());
